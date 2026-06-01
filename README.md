@@ -2,8 +2,28 @@
 
 A tiny macOS focus timer built with Swift, AppKit, and Carbon.
 
-Build it with:
+Build the app bundle with:
 
 ```sh
-swiftc "FocusBlocker.swift" -o "FocusBlocker" -framework AppKit -framework Carbon
+make build
+```
+
+Run it with:
+
+```sh
+make run
+```
+
+Install it to Applications with:
+
+```sh
+make install
+```
+
+The app runs as a menu bar item. To start it when you log in, add `FocusBlocker.app` in System Settings > General > Login Items.
+
+For a scriptable startup install instead:
+
+```sh
+make launch-agent
 ```
