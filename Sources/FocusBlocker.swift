@@ -9,13 +9,10 @@
 // Hotkey:
 //   Control-Option-Space toggles the window. Change `hotKeyCode` and `hotKeyModifiers`
 //   below if that conflicts with another app.
-//
-// Note:
-//   This intentionally avoids UserNotifications because that API expects a real
-//   .app bundle. The completion notification uses /usr/bin/osascript instead.
 
 import AppKit
 import Carbon
+import UserNotifications
 
 private struct FocusTask {
     let description: String
@@ -23,7 +20,7 @@ private struct FocusTask {
     let endDate: Date
 }
 
-final class FocusBlockerApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
+final class FocusBlockerApp: NSObject, NSApplicationDelegate, NSWindowDelegate, UNUserNotificationCenterDelegate {
     private static let hotKeySignature = fourCharCode("FBLK")
     private let hotKeyCode = UInt32(kVK_Space)
     private let hotKeyModifiers = UInt32(controlKey | optionKey)
@@ -47,6 +44,7 @@ final class FocusBlockerApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
 
     func applicationDidFinishLaunching(_ notification: Notification) {
         NSApp.setActivationPolicy(.accessory)
+        configureNotifications()
         buildStatusItem()
         buildWindow()
         registerGlobalHotKey()
@@ -309,29 +307,43 @@ final class FocusBlockerApp: NSObject, NSApplicationDelegate, NSWindowDelegate {
         statusMenuItem.title = menuText
     }
 
-    private func sendCompletionNotification(for task: FocusTask) {
-        let title = appleScriptString("Focus block complete")
-        let body = appleScriptString("Time to choose a new task. Finished: \(task.description)")
-        let script = "display notification \(body) with title \(title) sound name \"Glass\""
-
-        let process = Process()
-        process.executableURL = URL(fileURLWithPath: "/usr/bin/osascript")
-        process.arguments = ["-e", script]
-
-        do {
-            try process.run()
-        } catch {
-            print("Could not send notification via osascript: \(error)")
+    private func configureNotifications() {
+        let notificationCenter = UNUserNotificationCenter.current()
+        notificationCenter.delegate = self
+        notificationCenter.requestAuthorization(options: [.alert, .sound]) { granted, error in
+            if let error {
+                print("Could not request notification permission: \(error)")
+            } else if !granted {
+                print("Notification permission was not granted.")
+            }
         }
     }
 
-    private func appleScriptString(_ value: String) -> String {
-        let escapedValue = value
-            .replacingOccurrences(of: "\\", with: "\\\\")
-            .replacingOccurrences(of: "\"", with: "\\\"")
-            .replacingOccurrences(of: "\n", with: " ")
+    private func sendCompletionNotification(for task: FocusTask) {
+        let content = UNMutableNotificationContent()
+        content.title = "Focus block complete"
+        content.body = "Time to choose a new task. Finished: \(task.description)"
+        content.sound = .default
 
-        return "\"\(escapedValue)\""
+        let request = UNNotificationRequest(
+            identifier: UUID().uuidString,
+            content: content,
+            trigger: nil
+        )
+
+        UNUserNotificationCenter.current().add(request) { error in
+            if let error {
+                print("Could not send notification: \(error)")
+            }
+        }
+    }
+
+    func userNotificationCenter(
+        _ center: UNUserNotificationCenter,
+        willPresent notification: UNNotification,
+        withCompletionHandler completionHandler: @escaping (UNNotificationPresentationOptions) -> Void
+    ) {
+        completionHandler([.banner, .list, .sound])
     }
 
     private func parseTask(_ input: String) -> (minutes: Int, description: String)? {

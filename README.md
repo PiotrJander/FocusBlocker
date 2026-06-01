@@ -2,6 +2,9 @@
 
 A tiny macOS focus timer built with Swift, AppKit, and Carbon.
 
+macOS will ask for notification permission the first time the app runs.
+If notifications do not appear, check System Settings > Notifications > FocusBlocker.
+
 Build the app bundle with:
 
 ```sh

@@ -14,7 +14,9 @@ build:
 	swiftc "Sources/$(APP_NAME).swift" \
 		-o "$(MACOS_DIR)/$(APP_NAME)" \
 		-framework AppKit \
-		-framework Carbon
+		-framework Carbon \
+		-framework UserNotifications
+	codesign --force --deep --sign - "$(APP_BUNDLE)"
 	@echo "Built $(APP_BUNDLE)"
 
 run: build
