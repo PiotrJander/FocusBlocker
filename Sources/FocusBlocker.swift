@@ -24,6 +24,7 @@ final class FocusBlockerApp: NSObject, NSApplicationDelegate, NSWindowDelegate, 
     private static let hotKeySignature = fourCharCode("FBLK")
     private let hotKeyCode = UInt32(kVK_Space)
     private let hotKeyModifiers = UInt32(controlKey | optionKey)
+    private let idleIconColor = NSColor(red: 1.0, green: 0.45, blue: 0.45, alpha: 1.0)
 
     private var window: NSWindow!
     private var inputField: NSTextField!
@@ -71,9 +72,12 @@ final class FocusBlockerApp: NSObject, NSApplicationDelegate, NSWindowDelegate, 
         statusItem = NSStatusBar.system.statusItem(withLength: NSStatusItem.variableLength)
 
         if let button = statusItem.button {
-            button.image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Focus timer")
+            let image = NSImage(systemSymbolName: "timer", accessibilityDescription: "Focus timer")
+            image?.isTemplate = true
+            button.image = image
             button.imagePosition = .imageLeading
             button.title = "Focus"
+            button.contentTintColor = idleIconColor
         }
 
         let menu = NSMenu()
@@ -264,7 +268,7 @@ final class FocusBlockerApp: NSObject, NSApplicationDelegate, NSWindowDelegate, 
         progressLabel.textColor = .secondaryLabelColor
         cancelButton.isEnabled = false
         cancelMenuItem.isEnabled = false
-        updateStatusItem(title: "Focus", menuText: "No focus block running")
+        updateStatusItem(title: "Focus", menuText: "No focus block running", isIdle: true)
     }
 
     private func updateDisplayedTask() {
@@ -283,7 +287,7 @@ final class FocusBlockerApp: NSObject, NSApplicationDelegate, NSWindowDelegate, 
         let statusText = "\(remainingMinutes)m \(task.description)"
         progressLabel.stringValue = "\(remainingMinutes) minute\(remainingMinutes == 1 ? "" : "s") left: \(task.description)"
         progressLabel.textColor = .labelColor
-        updateStatusItem(title: shortened(statusText, limit: 34), menuText: statusText)
+        updateStatusItem(title: shortened(statusText, limit: 34), menuText: statusText, isIdle: false)
     }
 
     private func finishTask(_ task: FocusTask) {
@@ -295,15 +299,16 @@ final class FocusBlockerApp: NSObject, NSApplicationDelegate, NSWindowDelegate, 
         progressLabel.textColor = .labelColor
         cancelButton.isEnabled = false
         cancelMenuItem.isEnabled = false
-        updateStatusItem(title: "Done", menuText: "Done: \(task.description)")
+        updateStatusItem(title: "Done", menuText: "Done: \(task.description)", isIdle: true)
 
         NSSound.beep()
         sendCompletionNotification(for: task)
         NSApp.requestUserAttention(.informationalRequest)
     }
 
-    private func updateStatusItem(title: String, menuText: String) {
+    private func updateStatusItem(title: String, menuText: String, isIdle: Bool) {
         statusItem.button?.title = title
+        statusItem.button?.contentTintColor = isIdle ? idleIconColor : nil
         statusMenuItem.title = menuText
     }
 
